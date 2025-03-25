@@ -1,19 +1,34 @@
 #ifndef DATAGEN_H
 #define DATAGEN_H
 
+#include <map>
 #include <string>
 #include <vector>
 
 #define FULL_MASK 0xffffffff
 
-enum DATA_DISTRIBUTION {
-  UNIFORM,
-  GAUSSIAN,
-  ZIPF,
+/**
+ * Enum representing different data distributions
+ */
+enum class DATA_DISTRIBUTION { UNIFORM, GAUSSIAN, ZIPF };
+
+/**
+ * Enum representing supported data types
+ */
+enum class DATATYPE {
+  VAL_SHORT,
+  VAL_INT,
+  VAL_UNSIGNED,
+  VAL_SIZE_T,
+  VAL_LONG,
+  VAL_LONGLONG,
+  VAL_FLOAT,
+  VAL_DOUBLE
 };
 
-enum DATATYPE { VAL_INT, VAL_LONG, VAL_LONGLONG, VAL_FLOAT, VAL_DOUBLE };
-
+/**
+ * Union to store different data types
+ */
 union VALUE {
   int int_val;
   long long_val;
@@ -22,41 +37,57 @@ union VALUE {
   double double_val;
 };
 
+/**
+ * Class to generate synthetic data using different distributions
+ */
 class DataGen {
 public:
-  DataGen(size_t data_size, DATATYPE m_key_data_type, DATATYPE val_data_type);
+  static const std::map<DATATYPE, std::string> INT_TYPE;
+  static const std::map<DATATYPE, std::string> FLOATING_TYPE;
+
+public:
+  DataGen(size_t data_size, DATATYPE key_datatype, DATATYPE val_datatype);
   ~DataGen();
 
-  bool generate(DATA_DISTRIBUTION data_distro, size_t group_nums = 0);
+  bool generate(DATA_DISTRIBUTION data_distro, size_t num_groups = 0);
   bool writeResults(const std::string &file_path);
+  static int getBits(const std::string &str);
 
 private:
-  bool dataGenerator(DATA_DISTRIBUTION data_distro, size_t group_nums);
+  bool dataGenerator(DATA_DISTRIBUTION data_distro, size_t num_groups);
   void typeConverter(DATATYPE data_type, VALUE &val, size_t val_gen);
+
   /**
-   * Function to generate Zipf (power law) distributed random variables
-   * Input: alpha and N
-   * Output: Returns with Zipf distributed random variable
+   * Generates a Zipf (power law) distributed random variable
+   * @param alpha Shape parameter
+   * @param n Number of elements
+   * @return A Zipf-distributed random variable
    */
   size_t zipf(double alpha, size_t n);
+
   /**
-   * Multiplicative LCG for generating uniform(0.0, 1.0) random numbers
-   * x_n = 7^5*x_(n-1)mod(2^31 - 1)
-   * With x seeded to 1 the 10000th x value should be 1043618065
-   * From R. Jain, "The Art of Computer Systems Performance Analysis,"
-   * John Wiley & Sons, 1991. (Page 443, Figure 26.2)
+   * Multiplicative Linear Congruential Generator (LCG)
+   * for generating uniform(0.0, 1.0) random numbers
+   * @param seed Initial seed value
+   * @return A random double between 0.0 and 1.0
    */
   double rand_val(int seed);
+
+  /**
+   * Generates a normally distributed random number
+   * @param mu Mean
+   * @param sigma Standard deviation
+   * @return A normally distributed random number
+   */
   double randn(double mu, double sigma);
 
 private:
-  /* data */
-  size_t m_data_size;
-  DATATYPE m_key_datatype;
-  DATATYPE m_val_datatype;
-  std::vector<size_t> m_oid;
-  std::vector<VALUE> m_key;
-  std::vector<VALUE> m_val;
+  size_t m_data_size;        // Total data size
+  DATATYPE m_key_datatype;   // Data type of the key
+  DATATYPE m_val_datatype;   // Data type of the value
+  std::vector<size_t> m_oid; // Object ID storage
+  std::vector<VALUE> m_key;  // Key values storage
+  std::vector<VALUE> m_val;  // Value storage
 };
 
-#endif
+#endif // DATAGEN_H
