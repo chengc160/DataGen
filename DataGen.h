@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-
 #define FULL_MASK 0xffffffff
 
 enum DATA_DISTRIBUTION {
@@ -13,7 +12,7 @@ enum DATA_DISTRIBUTION {
   ZIPF,
 };
 
-enum VALUE_DATATYPE { VAL_INT, VAL_LONG, VAL_LONGLONG, VAL_FLOAT, VAL_DOUBLE };
+enum DATATYPE { VAL_INT, VAL_LONG, VAL_LONGLONG, VAL_FLOAT, VAL_DOUBLE };
 
 union VALUE {
   int int_val;
@@ -25,15 +24,15 @@ union VALUE {
 
 class DataGen {
 public:
-  DataGen(size_t data_size, VALUE_DATATYPE val_data_type);
+  DataGen(size_t data_size, DATATYPE m_key_data_type, DATATYPE val_data_type);
   ~DataGen();
 
-  bool generate(DATA_DISTRIBUTION data_distro, size_t group_nums = -1);
+  bool generate(DATA_DISTRIBUTION data_distro, size_t group_nums = 0);
   bool writeResults(const std::string &file_path);
 
 private:
   bool dataGenerator(DATA_DISTRIBUTION data_distro, size_t group_nums);
-  void valueGenerator(VALUE &val, size_t val_gen);
+  void typeConverter(DATATYPE data_type, VALUE &val, size_t val_gen);
   /**
    * Function to generate Zipf (power law) distributed random variables
    * Input: alpha and N
@@ -53,9 +52,10 @@ private:
 private:
   /* data */
   size_t m_data_size;
-  VALUE_DATATYPE m_val_data_type;
+  DATATYPE m_key_datatype;
+  DATATYPE m_val_datatype;
   std::vector<size_t> m_oid;
-  std::vector<size_t> m_key;
+  std::vector<VALUE> m_key;
   std::vector<VALUE> m_val;
 };
 

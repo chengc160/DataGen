@@ -1,20 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
-project(DataGenProject)
 
-# Use C++17
+# Project name
+project(DataGen)
+
+# Specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Ensure Debugging Symbols (-g)
+# Enable debug symbols
 set(CMAKE_BUILD_TYPE Debug)
 
-# Create executable from source files
-add_executable(DataGen
-    main.cpp
-    details/DataGen.cpp
-)
+# Include directories (for headers)
+include_directories(${CMAKE_SOURCE_DIR})
 
-# Include the root directory so it can find "DataGen.h"
-target_include_directories(DataGen PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+# Add the executable
+add_executable(DataGenExec main.cpp details/DataGen.cpp)

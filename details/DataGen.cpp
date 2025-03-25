@@ -7,8 +7,9 @@
 #define FALSE 0 // Boolean false
 #define TRUE 1  // Boolean true
 
-DataGen::DataGen(size_t data_size, VALUE_DATATYPE val_data_type)
-    : m_data_size(data_size), m_val_data_type(val_data_type) {
+DataGen::DataGen(size_t data_size, DATATYPE key_datatype, DATATYPE val_datatype)
+    : m_data_size(data_size), m_key_datatype(key_datatype),
+      m_val_datatype(val_datatype) {
   m_oid.reserve(data_size);
   m_key.reserve(data_size);
   m_val.reserve(data_size);
@@ -17,7 +18,7 @@ DataGen::DataGen(size_t data_size, VALUE_DATATYPE val_data_type)
 DataGen::~DataGen() {}
 
 bool DataGen::generate(DATA_DISTRIBUTION data_distro,
-                       size_t group_nums /*=-1*/) {
+                       size_t group_nums /*=0*/) {
 
   return dataGenerator(data_distro, group_nums);
 }
@@ -26,6 +27,10 @@ bool DataGen::writeResults(const std::string &file_path) {
   if (file_path.empty()) {
     std::cerr << "given file path is empty!" << std::endl;
     return false;
+  }
+  for (size_t i = 0; i < m_data_size; i++) {
+    std::cout << "OID: " << m_oid[i] << " Key: " << m_key[i].longlong_val
+              << "Val: " << m_val[i].double_val << std::endl;
   }
 
   return true;
@@ -40,22 +45,26 @@ bool DataGen::dataGenerator(DATA_DISTRIBUTION data_distro, size_t group_nums) {
   case UNIFORM:
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      m_key[i] = ((unsigned)rand() % group_nums) * (FULL_MASK / group_nums);
-      valueGenerator(m_val[i], rand());
+      if (group_nums == 0) {
+        typeConverter(m_key_datatype, m_key[i], (unsigned)rand());
+      } else {
+        typeConverter(m_key_datatype, m_key[i], (unsigned)rand() % group_nums);
+      }
+      typeConverter(m_val_datatype, m_val[i], rand());
     }
     break;
   case GAUSSIAN:
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      m_key[i] = ((unsigned)rand() % group_nums) * (FULL_MASK / group_nums);
-      valueGenerator(m_val[i], randn(FULL_MASK / 2, pow(2, 29)));
+      typeConverter(m_key_datatype, m_key[i], randn(FULL_MASK / 2, pow(2, 29)));
+      typeConverter(m_val_datatype, m_val[i], rand());
     }
     break;
   case ZIPF:
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      m_key[i] = ((unsigned)rand() % group_nums) * (FULL_MASK / group_nums);
-      valueGenerator(m_val[i], zipf(1.0, pow(2, 16)));
+      typeConverter(m_key_datatype, m_key[i], zipf(1.0, pow(2, 16)));
+      typeConverter(m_val_datatype, m_val[i], rand());
     }
     break;
 
@@ -67,8 +76,8 @@ bool DataGen::dataGenerator(DATA_DISTRIBUTION data_distro, size_t group_nums) {
   return true;
 }
 
-void DataGen::valueGenerator(VALUE &val, size_t val_gen) {
-  switch (m_val_data_type) {
+void DataGen::typeConverter(DATATYPE data_type, VALUE &val, size_t val_gen) {
+  switch (data_type) {
   case VAL_INT:
     val.int_val = static_cast<int>(val_gen);
     break;
