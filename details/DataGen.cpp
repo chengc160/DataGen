@@ -1,16 +1,22 @@
 #include "DataGen.h"
+
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <random>
+#include <sstream>
 
 const std::map<DATATYPE, std::string> DataGen::INT_TYPE = {
+    {DATATYPE::VAL_SIZE_T, "size_t"},
     {DATATYPE::VAL_SHORT, "short"},
     {DATATYPE::VAL_INT, "int"},
-    {DATATYPE::VAL_UNSIGNED, "unsigned"},
-    {DATATYPE::VAL_SIZE_T, "size_t"},
     {DATATYPE::VAL_LONG, "long"},
-    {DATATYPE::VAL_LONGLONG, "long long"}};
+    {DATATYPE::VAL_LONGLONG, "long long"},
+    {DATATYPE::VAL_LONGDOUBLE, "long double"}};
 
 const std::map<DATATYPE, std::string> DataGen::FLOATING_TYPE = {
     {DATATYPE::VAL_FLOAT, "float"}, {DATATYPE::VAL_DOUBLE, "double"}};
@@ -29,10 +35,23 @@ bool DataGen::generate(DATA_DISTRIBUTION data_distro, size_t num_groups) {
   return dataGenerator(data_distro, num_groups);
 }
 
-bool DataGen::writeResults(const std::string &file_path) {
+bool DataGen::writeResults(const std::string &file_path, std::string &msg) {
   if (file_path.empty()) {
-    std::cerr << "Error: File path is empty!" << std::endl;
+    msg = "Error: File path is empty!";
     return false;
+  }
+
+  std::ofstream out_file(file_path);
+  if (out_file.is_open()) {
+    out_file << m_data_size << " data points" << msg << std::endl;
+    out_file << "OID\t Key\t Value" << std::endl;
+    for (size_t i = 0; i < m_data_size; i++) {
+      out_file << std::fixed << m_oid[i] << "\t" << variantToString(m_key[i])
+               << "\t" << variantToString(m_val[i]) << std::endl;
+    }
+    msg = "Data are successfully written into " + file_path;
+  } else {
+    msg = "Unable to open file.";
   }
 
   // Placeholder: Implement file writing if needed
@@ -40,20 +59,66 @@ bool DataGen::writeResults(const std::string &file_path) {
   return true;
 }
 
+bool DataGen::plotDistributionHistogram(int bins, int width) {
+  if (m_data_size == 0) {
+    return false;
+  }
+
+  std::vector<double> numericValues;
+  for (const auto &v : m_key) {
+    numericValues.push_back(variantToDouble(v));
+  }
+
+  if (numericValues.empty()) {
+    return false;
+  }
+
+  double min = *std::min_element(numericValues.begin(), numericValues.end());
+  double max = *std::max_element(numericValues.begin(), numericValues.end());
+  double binSize = (max - min) / bins;
+
+  std::vector<int> counts(bins, 0);
+  for (const auto &val : numericValues) {
+    int bin = std::min(static_cast<int>((val - min) / binSize), bins - 1);
+    counts[bin]++;
+  }
+
+  int maxCount = *std::max_element(counts.begin(), counts.end());
+
+  std::cout << "\nHistogram:\n";
+  for (int i = 0; i < bins; ++i) {
+    double binStart = min + i * binSize;
+    double binEnd = binStart + binSize;
+
+    // Print bucket index and bin range aligned
+    std::cout << "Bucket[" << std::setw(2) << i << "] "
+              << "[" << std::fixed << std::setw(10) << std::setprecision(0)
+              << binStart << ", " << std::setw(10) << binEnd << ") ";
+
+    // Compute and print the bar
+    int barLength =
+        static_cast<int>((static_cast<double>(counts[i]) / maxCount) * width);
+    std::cout << std::left << std::string(barLength, '=') << std::right << " ("
+              << counts[i] << ")" << std::endl;
+  }
+
+  return true;
+}
+
 int DataGen::getBits(const std::string &str) {
-  const int bits_per_byte = 8;
+  const int BIT_PER_BYTE = 8;
   if (str == "short")
-    return sizeof(short) * bits_per_byte;
+    return sizeof(short) * BIT_PER_BYTE;
   if (str == "int")
-    return sizeof(int) * bits_per_byte;
+    return sizeof(int) * BIT_PER_BYTE;
   if (str == "unsigned")
-    return sizeof(unsigned) * bits_per_byte;
+    return sizeof(unsigned) * BIT_PER_BYTE;
   if (str == "size_t")
-    return sizeof(size_t) * bits_per_byte;
+    return sizeof(size_t) * BIT_PER_BYTE;
   if (str == "long")
-    return sizeof(long) * bits_per_byte;
+    return sizeof(long) * BIT_PER_BYTE;
   if (str == "long long")
-    return sizeof(long long) * bits_per_byte;
+    return sizeof(long long) * BIT_PER_BYTE;
   return 0;
 }
 
@@ -63,15 +128,23 @@ bool DataGen::dataGenerator(DATA_DISTRIBUTION data_distro, size_t num_groups) {
     return false;
   }
 
+  // Random engine and uniform distribution
+  int key_min = 0, key_max = RAND_MAX;
+  double val_min = 0, val_max = RAND_MAX;
+  std::random_device rd;  // Seed
+  std::mt19937 gen(rd()); // Mersenne Twister engine
+  std::uniform_real_distribution<> dist_key(key_min, key_max);
+  std::uniform_real_distribution<> dist_val(val_min, val_max);
+
   switch (data_distro) {
   case DATA_DISTRIBUTION::UNIFORM:
     std::cout << "Generating " << getBits(INT_TYPE.at(m_key_datatype))
               << "-bit keys from UNIFORM distribution...\n";
+
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      typeConverter(m_key_datatype, m_key[i],
-                    num_groups == 0 ? rand() : rand() % num_groups);
-      typeConverter(m_val_datatype, m_val[i], rand());
+      m_key[i] = dist_key(gen);
+      m_val[i] = dist_val(gen);
     }
     break;
 
@@ -80,8 +153,8 @@ bool DataGen::dataGenerator(DATA_DISTRIBUTION data_distro, size_t num_groups) {
               << "-bit keys from GAUSSIAN distribution...\n";
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      typeConverter(m_key_datatype, m_key[i], randn(FULL_MASK / 2, pow(2, 29)));
-      typeConverter(m_val_datatype, m_val[i], rand());
+      m_key[i] = randn(FULL_MASK / 2, pow(2, 29));
+      m_val[i] = std::rand();
     }
     break;
 
@@ -90,37 +163,36 @@ bool DataGen::dataGenerator(DATA_DISTRIBUTION data_distro, size_t num_groups) {
               << "-bit keys from ZIPF distribution...\n";
     for (size_t i = 0; i < m_data_size; i++) {
       m_oid[i] = i;
-      typeConverter(m_key_datatype, m_key[i], zipf(1.0, m_data_size));
-      typeConverter(m_val_datatype, m_val[i], rand());
+      m_key[i] = static_cast<long>(zipf(1.0, m_data_size));
+      m_val[i] = std::rand();
     }
     break;
 
   default:
     std::cerr << "Error: Undefined data distribution!" << std::endl;
-    return false;
+    break;
   }
 
   return true;
 }
 
-void DataGen::typeConverter(DATATYPE data_type, VALUE &val, size_t val_gen) {
-  switch (data_type) {
-  case DATATYPE::VAL_INT:
-    val.int_val = static_cast<int>(val_gen);
-    break;
-  case DATATYPE::VAL_LONG:
-    val.long_val = static_cast<long>(val_gen);
-    break;
-  case DATATYPE::VAL_LONGLONG:
-    val.longlong_val = static_cast<long long>(val_gen);
-    break;
-  case DATATYPE::VAL_FLOAT:
-    val.float_val = static_cast<float>(val_gen);
-    break;
-  case DATATYPE::VAL_DOUBLE:
-    val.double_val = static_cast<double>(val_gen);
-    break;
-  }
+double DataGen::variantToDouble(const VALUE &v) const {
+  return std::visit([](auto &&v) -> double { return static_cast<double>(v); },
+                    v);
+}
+
+int DataGen::variantToInt(const VALUE &v) const {
+  return std::visit([](auto &&v) -> int { return static_cast<int>(v); }, v);
+}
+
+std::string DataGen::variantToString(const VALUE &v) const {
+  return std::visit(
+      [](const auto &val) -> std::string {
+        std::ostringstream oss;
+        oss << val;
+        return oss.str();
+      },
+      v);
 }
 
 size_t DataGen::zipf(double alpha, size_t n) {

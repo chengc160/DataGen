@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <variant>
 #include <vector>
 
 #define FULL_MASK 0xffffffff
@@ -16,32 +17,24 @@ enum class DATA_DISTRIBUTION { UNIFORM, GAUSSIAN, ZIPF };
  * Enum representing supported data types
  */
 enum class DATATYPE {
+  VAL_SIZE_T,
   VAL_SHORT,
   VAL_INT,
-  VAL_UNSIGNED,
-  VAL_SIZE_T,
   VAL_LONG,
   VAL_LONGLONG,
   VAL_FLOAT,
-  VAL_DOUBLE
+  VAL_DOUBLE,
+  VAL_LONGDOUBLE
 };
 
-/**
- * Union to store different data types
- */
-union VALUE {
-  int int_val;
-  long long_val;
-  long long longlong_val;
-  float float_val;
-  double double_val;
-};
-
+using VALUE = std::variant<int, long, long long, float, double, long double>;
 /**
  * Class to generate synthetic data using different distributions
  */
 class DataGen {
 public:
+  static constexpr int BIT_PER_BYTE = 8;
+
   static const std::map<DATATYPE, std::string> INT_TYPE;
   static const std::map<DATATYPE, std::string> FLOATING_TYPE;
 
@@ -50,12 +43,15 @@ public:
   ~DataGen();
 
   bool generate(DATA_DISTRIBUTION data_distro, size_t num_groups = 0);
-  bool writeResults(const std::string &file_path);
+  bool writeResults(const std::string &file_path, std::string &msg);
+  bool plotDistributionHistogram(int bins = 10, int width = 50);
   static int getBits(const std::string &str);
 
 private:
   bool dataGenerator(DATA_DISTRIBUTION data_distro, size_t num_groups);
-  void typeConverter(DATATYPE data_type, VALUE &val, size_t val_gen);
+  int variantToInt(const VALUE &val) const;
+  double variantToDouble(const VALUE &val) const;
+  std::string variantToString(const VALUE &v) const;
 
   /**
    * Generates a Zipf (power law) distributed random variable

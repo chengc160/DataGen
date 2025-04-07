@@ -30,17 +30,16 @@ int main(int argc, char *argv[]) {
                  : DATA_DISTRIBUTION::UNIFORM;
   const std::string output_file = (argc > 4) ? argv[4] : "./data.txt";
 
-  std::cout << "Generating synthetic data...\n";
-
+  std::cout << "Synthetic data generation:\n";
+  std::string msg;
   // Initialize data generator
   DataGen data_gen(data_size, DATATYPE::VAL_LONGLONG, DATATYPE::VAL_DOUBLE);
 
   // Generate and write results
   data_gen.generate(data_distribution, num_groups);
-  data_gen.writeResults(output_file);
-
-  std::cout << "Data generation complete. Output saved to: " << output_file
-            << std::endl;
+  data_gen.plotDistributionHistogram(20);
+  data_gen.writeResults(output_file, msg);
+  std::cout << msg << std::endl;
 
   return 0;
 }
